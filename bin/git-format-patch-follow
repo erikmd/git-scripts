@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright (c) 2017 Erik Martin-Dorel
-ts="Time-stamp: <2017-10-07 19:30:23 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2017-10-07 19:34:45 emartin>"; ts=${ts#Time-stamp: }
 set -euo pipefail
 
 function die_hard() {
@@ -24,7 +24,7 @@ EOF
 
 function main() {
     local arg
-    local follow
+    local follow=''
     local skip=''
     local args=()
     if [[ $# = 0 ]]; then
@@ -34,11 +34,11 @@ function main() {
     for arg; do
         case "$arg" in
             "--")
-                die_hard "'-- [filenames]' arguments are not allowed"
+                die_hard "Error: '-- [filenames]' arguments are not allowed."
                 ;;
             "--follow")
                 if [[ $# -lt 2 ]]; then
-                    die_hard "'--follow' expects one argument"
+                    die_hard "Error: '--follow' expects one argument."
                 else
                     follow="$2"
                     skip='true'
@@ -59,6 +59,9 @@ function main() {
                 ;;
         esac
     done
+    if [[ -z "$follow" ]]; then
+        die_hard "Error: option '--follow <filename>' required."
+    fi
     # $follow is the single file to follow
     # ${args[@]} is the rest of arguments
     local file
