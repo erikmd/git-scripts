@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright (c) 2017 Erik Martin-Dorel
-ts="Time-stamp: <2017-10-07 19:34:45 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2017-10-08 00:32:42 emartin>"; ts=${ts#Time-stamp: }
 set -euo pipefail
 
 function die_hard() {
@@ -12,13 +12,14 @@ function usage() {
     cat >&2 <<EOF
 git-format-patch-follow $ts
 
-Facility to export the Git history of a given file, including renames.
+Facility to export the Git history of given files, including renames.
 
 Usage:
-$ git format-patch-follow <options> --follow <filename>
+$ git format-patch-follow <options> --follow <path1> [--follow <path2>] ...
 
 Example:
-$ git format-patch-follow --stdout --root --follow last.bash > last.diff
+$ git format-patch-follow --stdout --root --follow 1.txt > patch
+$ git format-patch-follow --stdout --root --follow 1.txt --follow 2.txt > patch
 EOF
 }
 
@@ -31,6 +32,8 @@ function main() {
         usage
         exit 0
     fi
+    local file
+    local files=()
     for arg; do
         case "$arg" in
             "--")
@@ -43,6 +46,10 @@ function main() {
                     follow="$2"
                     skip='true'
                     shift 2
+                    # $follow is the file to follow
+                    while read -r -d $'\0' file; do
+                        files+=("$file")
+                    done < <(git log -z --name-only --format="format:" --follow "$follow" | tr -s '\0' | sort -u -z)
                 fi
                 ;;
             "--help")
@@ -53,23 +60,14 @@ function main() {
                 if [[ $skip = 'true' ]]; then
                     skip=''
                 else
-                    args[${#args[@]}]="$arg"
+                    args+=("$arg")
                     shift
                 fi
                 ;;
         esac
     done
-    if [[ -z "$follow" ]]; then
-        die_hard "Error: option '--follow <filename>' required."
-    fi
-    # $follow is the single file to follow
-    # ${args[@]} is the rest of arguments
-    local file
-    local files=()
-    while read -r -d $'\0' file; do
-        files[${#files[@]}]="$file"
-    done < <(git log -z --name-only --format="format:" --follow "$follow" | tr -s '\0' | sort -u -z)
-    # ${files[@]} is the list of files related (w.r.t. renaming) to $follow
+    # ${args[@]} is the list of arguments except those bound to --follow
+    # ${files[@]} is the list of files to consider in the history export
     git format-patch "${args[@]}" -- "${files[@]}"
 }
 
