@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright (c) 2017 Erik Martin-Dorel
-
+ts="Time-stamp: <2017-10-07 19:30:23 emartin>"; ts=${ts#Time-stamp: }
 set -euo pipefail
 
 function die_hard() {
@@ -8,11 +8,29 @@ function die_hard() {
     exit 1
 }
 
+function usage() {
+    cat >&2 <<EOF
+git-format-patch-follow $ts
+
+Facility to export the Git history of a given file, including renames.
+
+Usage:
+$ git format-patch-follow <options> --follow <filename>
+
+Example:
+$ git format-patch-follow --stdout --root --follow last.bash > last.diff
+EOF
+}
+
 function main() {
     local arg
     local follow
     local skip=''
     local args=()
+    if [[ $# = 0 ]]; then
+        usage
+        exit 0
+    fi
     for arg; do
         case "$arg" in
             "--")
@@ -26,6 +44,10 @@ function main() {
                     skip='true'
                     shift 2
                 fi
+                ;;
+            "--help")
+                usage
+                exit 0
                 ;;
             *)
                 if [[ $skip = 'true' ]]; then
