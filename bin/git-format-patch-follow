@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright (c) 2017 Erik Martin-Dorel
-ts="Time-stamp: <2017-10-08 00:32:42 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2017-10-08 14:38:20 emartin>"; ts=${ts#Time-stamp: }
 set -euo pipefail
 
 function die_hard() {
@@ -24,49 +24,45 @@ EOF
 }
 
 function main() {
-    local arg
-    local follow=''
-    local skip=''
-    local args=()
     if [[ $# = 0 ]]; then
         usage
         exit 0
     fi
-    local file
-    local files=()
-    for arg; do
-        case "$arg" in
+    local args=()
+    local paths=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
             "--")
                 die_hard "Error: '-- [filenames]' arguments are not allowed."
-                ;;
-            "--follow")
-                if [[ $# -lt 2 ]]; then
-                    die_hard "Error: '--follow' expects one argument."
-                else
-                    follow="$2"
-                    skip='true'
-                    shift 2
-                    # $follow is the file to follow
-                    while read -r -d $'\0' file; do
-                        files+=("$file")
-                    done < <(git log -z --name-only --format="format:" --follow "$follow" | tr -s '\0' | sort -u -z)
-                fi
                 ;;
             "--help")
                 usage
                 exit 0
                 ;;
-            *)
-                if [[ $skip = 'true' ]]; then
-                    skip=''
+            "--follow")
+                if [[ $# -lt 2 ]]; then
+                    die_hard "Error: '--follow' expects one argument."
                 else
-                    args+=("$arg")
-                    shift
+                    paths+=("$2")
+                    shift 2
                 fi
+                ;;
+            *)
+                args+=("$1")
+                shift
                 ;;
         esac
     done
+    # ${paths[@]} are the files to follow
     # ${args[@]} is the list of arguments except those bound to --follow
+    local path
+    local file
+    local files=()
+    while read -r -d $'\0' file; do
+        files+=("$file")
+    done < <(for path in "${paths[@]}"; do \
+                 git log -z --name-only --format="format:" --follow "$path"; \
+             done | tr -s '\0' | sort -u -z)
     # ${files[@]} is the list of files to consider in the history export
     git format-patch "${args[@]}" -- "${files[@]}"
 }
