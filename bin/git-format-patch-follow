@@ -23,6 +23,8 @@ $ git format-patch-follow <options> --follow <path1> [--follow <path2>] ...
 Example:
 $ git format-patch-follow --stdout --root --follow 1.txt > patch
 $ git format-patch-follow --stdout --root --follow 1.txt --follow 2.txt > patch
+
+Bug: issue when run from a child folder?
 EOF
 }
 
