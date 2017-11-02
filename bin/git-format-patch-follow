@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2017-10-08 14:38:20 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2017-11-02 21:25:50 emartin>"; ts=${ts#Time-stamp: }
 
 function die_hard() {
     echo -e "$@" >&2
@@ -24,7 +24,6 @@ Example:
 $ git format-patch-follow --stdout --root --follow 1.txt > patch
 $ git format-patch-follow --stdout --root --follow 1.txt --follow 2.txt > patch
 
-Bug: issue when run from a child folder?
 EOF
 }
 
@@ -69,6 +68,8 @@ function main() {
                  git log -z --name-only --format="format:" --follow "$path"; \
              done | tr -s '\0' | sort -u -z)
     # ${files[@]} is the list of files to consider in the history export
+    # files are relative to the root dir. of the repo, so we need to cd:
+    cd "$(git rev-parse --show-toplevel)"
     git format-patch "${args[@]}" -- "${files[@]}"
 }
 
