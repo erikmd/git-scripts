@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Copyright (c) 2017 Erik Martin-Dorel
+# Copyright (c) 2017-2018  Erik Martin-Dorel
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2017-11-02 21:25:50 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2018-01-01 23:27:24 emartin>"; ts=${ts#Time-stamp: }
 
 function die_hard() {
     echo -e "$@" >&2
@@ -18,13 +18,38 @@ git-format-patch-follow $ts
 Facility to export the Git history of given files, including renames.
 
 Usage:
-$ git format-patch-follow <options> --follow <path1> [--follow <path2>] ...
+$ git format-patch-follow [<options>...] [--follow] [--] [<paths>...]
 
 Example:
-$ git format-patch-follow --stdout --root --follow 1.txt > patch
-$ git format-patch-follow --stdout --root --follow 1.txt --follow 2.txt > patch
+$ git format-patch-follow --stdout --root --follow -- 1.txt > patch
+$ git format-patch-follow --stdout --root --follow -- 1.txt 2.txt > patch
 
 EOF
+}
+
+function is_among() {
+    local arg="$1"
+    shift
+    local elt
+    for elt; do
+        if [ "$arg" = "$elt" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+function is_special_flag_wait_arg() {
+    local flag="$1"
+    # Extracted from
+    # - https://github.com/git/git/blob/master/Documentation/git-format-patch.txt
+    # - https://github.com/git/git/blob/master/Documentation/diff-options.txt
+    local specials=('-o' '-v' '--add-header' '--anchored' '--base' '--cc' '--diff-algorithm' '--diff-filter' '--dst-prefix' '--from' '--inter-hunk-context' '--in-reply-to' '--line-prefix' '--output-directory' '--reroll-count' '--signature' '--signature-file' '--src-prefix' '--start-number' '--subject-prefix' '--suffix' '--to' '--unified' '--word-diff-regex' '--ws-error-highlight')
+    if is_among "$flag" "${specials[@]}"; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 function main() {
@@ -34,31 +59,53 @@ function main() {
     fi
     local args=()
     local paths=()
+    local end_flags='false'
+    local follow='false'
     while [[ $# -gt 0 ]]; do
         case "$1" in
             "--")
-                die_hard "Error: '-- [filenames]' arguments are not allowed."
-                ;;
-            "--help")
-                usage
-                exit 0
-                ;;
-            "--follow")
-                if [[ $# -lt 2 ]]; then
-                    die_hard "Error: '--follow' expects one argument."
+                if [[ ${end_flags} == 'true' ]]; then
+                    paths+=("$1")
                 else
-                    paths+=("$2")
-                    shift 2
+                    end_flags='true'
+                fi
+                shift
+                ;;
+            -*) # Better than -?|--*)
+                # Because some short flags can have their arg concatenated
+                if [[ ${end_flags} == 'true' ]]; then
+                    paths+=("$1")
+                    shift
+                elif [[ "$1" == '--help' ]]; then
+                    usage
+                    exit 0
+                elif [[ "$1" == '--follow' ]]; then
+                    follow='true'
+                    shift
+                elif is_special_flag_wait_arg "$1"; then
+                    if [[ $# -lt 2 ]]; then
+                        die_hard "Error: '$1' expects one argument."
+                    else
+                        args+=("$1" "$2")
+                        shift 2
+                    fi
+                else
+                    args+=("$1")
+                    shift
                 fi
                 ;;
             *)
-                args+=("$1")
+                if [[ $follow == 'true' ]]; then
+                    paths+=("$1")
+                else
+                    args+=("$1")
+                fi
                 shift
                 ;;
         esac
     done
     # ${paths[@]} are the files to follow
-    # ${args[@]} is the list of arguments except those bound to --follow
+    # ${args[@]} are all args but '--', '--follow' and subsequent args
     local path
     local file
     local files=()
