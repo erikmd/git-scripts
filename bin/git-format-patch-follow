@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2018-01-01 23:51:44 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2018-01-02 00:02:22 emartin>"; ts=${ts#Time-stamp: }
 
 function die_hard() {
     echo -e "$@" >&2
@@ -76,7 +76,7 @@ function main() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             "--")
-                if [[ ${end_flags} == 'true' ]]; then
+                if [[ $end_flags == 'true' ]]; then
                     paths+=("$1")
                 else
                     end_flags='true'
@@ -85,7 +85,7 @@ function main() {
                 ;;
             -*) # Better than -?|--*)
                 # Because some short flags can have their arg concatenated
-                if [[ ${end_flags} == 'true' ]]; then
+                if [[ $end_flags == 'true' ]]; then
                     paths+=("$1")
                     shift
                 elif [[ "$1" == '--help' ]]; then
@@ -107,7 +107,7 @@ function main() {
                 fi
                 ;;
             *)
-                if [[ $follow == 'true' ]]; then
+                if [[ $follow == 'true' ]] || [[ $end_flags == 'true' ]]; then
                     paths+=("$1")
                 else
                     args+=("$1")
@@ -116,6 +116,10 @@ function main() {
                 ;;
         esac
     done
+    if [[ $follow == 'false' ]]; then
+        exec git format-patch "${args[@]}" -- "${paths[@]}"
+        exit 0
+    fi
     # ${paths[@]} are the files to follow
     # ${args[@]} are all args but '--', '--follow' and subsequent args
     local path
@@ -129,7 +133,7 @@ function main() {
     # ${files[@]} is the list of files to consider in the history export
     # files are relative to the root dir. of the repo, so we need to cd:
     cd "$(git rev-parse --show-toplevel)"
-    git format-patch "${args[@]}" -- "${files[@]}"
+    exec git format-patch "${args[@]}" -- "${files[@]}"
 }
 
 main "$@"
