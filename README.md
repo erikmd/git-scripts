@@ -30,3 +30,10 @@ Credits:
   git-format-patch-follow was written by Erik Martin-Dorel and it is
   distributed under the MIT license <//opensource.org/licenses/MIT>.
 ```
+
+## Installation
+
+To be able to use `git format-patch-follow` in a (Bash) terminal, you
+just need to download the script
+[git-format-patch-follow](https://github.com/erikmd/git-scripts/raw/master/bin/git-format-patch-follow),
+set its execute permission, and put it in your `PATH`.
