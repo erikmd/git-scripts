@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-04-30 23:38:02 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-04-30 23:38:32 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
@@ -18,7 +18,7 @@ git-prw $ts
 Facility to fetch a read/write branch from a GitHub repo Pull Request.
 
 Usage:
-  git prw [-f] [--] <ID> [<REMOTE>]
+  git prw <ID> [<REMOTE>] [-f]
 
 Example:
   git prw 390 upstream
@@ -138,21 +138,9 @@ already_exists() {
     git rev-parse --verify >/dev/null "$branch"
 }
 
-is_among() {
-    local arg="$1"
-    shift
-    local elt
-    for elt; do
-        if [ "$arg" = "$elt" ]; then
-            return 0
-        fi
-    done
-    return 1
-}
-
 main() {
-    local prid=$1
-    local remote=${2:-origin}
+    local prid
+    local remote
     local json
     local ssh_url
     local unique_suggested_name
@@ -160,26 +148,18 @@ main() {
     local ref
     local tracking_branch
     local force=false
-
-    ## Parse options
-    OPTIND=1 # Reset is necessary if getopts was used previously in the script.  It is a good idea to make this local in a function.
-    while getopts "fh" opt; do
-    case "$opt" in
-        f)
+    local args
+    local k
+    # Process optional CLI option -f, which can be anywhere
+    args=("${@}")
+    for (( k=0; k < $#; k++ )); do
+        if [ "${args[$k]}" = "-f" ]; then
             force=true
-            ;;
-        h)
-            usage
-            exit 0
-            ;;
-        '?')
-            usage >&2
-            exit 1
-            ;;
-    esac
+            unset args["$k"]
+        fi
     done
-    shift "$((OPTIND-1))" # Shift off the options and optional "--".
-    if [ $# -lt 1 ]; then
+    args=("${args[@]}")
+    if [ ${#args[@]} -lt 1 ]; then
         usage
         exit 0
     fi
