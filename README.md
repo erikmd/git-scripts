@@ -94,6 +94,8 @@ Summary:
   setting its upstream branch so that one can force-push to the fork.
 
   Flag -f overwrites the local branch pr/ID even if it already exists.
+  In general, it is a good idea to pass flag -f, unless we already ran
+  "git pr ID REMOTE" and did commits in the local branch pr/ID.
 
   It requires curl <https://curl.se/> and (optionally) jq.
 
