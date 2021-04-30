@@ -54,7 +54,7 @@ Summary:
   If the REMOTE argument is omitted, it defaults to "origin".
   REMOTE must point to a GitHub repository.
 
-  This command creates (or *overrides*) a local branch named "pr/ID",
+  This command creates (and overwrites) a local branch named "pr/ID",
   matching the source branch for PR #ID submitted in the REMOTE repo.
 
 See also:
@@ -89,9 +89,11 @@ Summary:
   If the REMOTE argument is omitted, it defaults to "origin".
   REMOTE must point to a GitHub repository.
 
-  This command creates (or *overrides*) a local branch named "pr/ID",
+  This command creates (and overwrites) a local branch named "pr/ID",
   matching the source branch for PR #ID submitted in the REMOTE repo,
-  setting its upstream branch so that one can force-push to the fork.
+  setting its upstream branch so that one can force-push to the fork
+  (using an SSH URL); it reuses (if applicable) an existing remote
+  matching that URL, or creates a remote named REMOTE-fork-for-pr-ID.
 
   Flag -f overwrites the local branch pr/ID even if it already exists.
   In general, it is a good idea to pass flag -f, unless we already ran

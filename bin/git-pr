@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-04-30 23:39:53 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-05-01 00:57:50 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
@@ -28,7 +28,7 @@ Summary:
   If the REMOTE argument is omitted, it defaults to "origin".
   REMOTE must point to a GitHub repository.
 
-  This command creates (or *overrides*) a local branch named "pr/ID",
+  This command creates (and overwrites) a local branch named "pr/ID",
   matching the source branch for PR #ID submitted in the REMOTE repo.
 
 See also:

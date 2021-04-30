@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-04-30 23:48:03 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-05-01 00:58:47 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
@@ -27,9 +27,11 @@ Summary:
   If the REMOTE argument is omitted, it defaults to "origin".
   REMOTE must point to a GitHub repository.
 
-  This command creates (or *overrides*) a local branch named "pr/ID",
+  This command creates (and overwrites) a local branch named "pr/ID",
   matching the source branch for PR #ID submitted in the REMOTE repo,
-  setting its upstream branch so that one can force-push to the fork.
+  setting its upstream branch so that one can force-push to the fork
+  (using an SSH URL); it reuses (if applicable) an existing remote
+  matching that URL, or creates a remote named REMOTE-fork-for-pr-ID.
 
   Flag -f overwrites the local branch pr/ID even if it already exists.
   In general, it is a good idea to pass flag -f, unless we already ran
@@ -180,7 +182,7 @@ main() {
     json=$(get_pr_json "$prid" "$remote")
     ssh_url=$(get_src_ssh_url <<<"$json")
     ref=$(get_src_ref <<<"$json")
-    unique_suggested_name="$remote+fork-for-pr-$prid"
+    unique_suggested_name="$remote-fork-for-pr-$prid"
     tracking_remote=$(get_new_remote_ifneedbe "$ssh_url" "$unique_suggested_name")
     tracking_branch="$tracking_remote/$ref"
     git fetch "$tracking_remote" "$ref"
