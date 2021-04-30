@@ -89,9 +89,9 @@ Summary:
   If the REMOTE argument is omitted, it defaults to "origin".
   REMOTE must point to a GitHub repository.
 
-  This command creates (and overwrites) a local branch named "pr/ID",
-  matching the source branch for PR #ID submitted in the REMOTE repo,
-  setting its upstream branch so that one can force-push to the fork
+  This command checkouts the branch named "pr/ID" (if it doesn't exist
+  yet, it fetches the source branch for the PR #ID in the REMOTE repo)
+  and sets its upstream branch so that one can force-push to the fork
   (using an SSH URL); it reuses (if applicable) an existing remote
   matching that URL, or creates a remote named REMOTE-fork-for-pr-ID.
 
