@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-04-30 22:55:35 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-04-30 23:39:53 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
@@ -47,6 +47,7 @@ main() {
         usage
         exit 0
     fi
+    echo >&2 "Overwriting branch pr/$1..."
     git checkout -q "$(git rev-parse --verify HEAD)"
     git fetch -fv "${2:-origin}" pull/"$1"/head:pr/"$1"
     git checkout pr/"$1"

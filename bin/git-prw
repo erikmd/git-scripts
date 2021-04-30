@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-04-30 23:38:32 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-04-30 23:39:58 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
@@ -170,6 +170,7 @@ main() {
     if already_exists pr/"$prid" && [ "$force" = false ]; then
         echo >&2 "Preserving branch pr/$prid. To overwrite, use the -f flag."
     else
+        echo >&2 "Overwriting branch pr/$prid..."
         git checkout -q "$(git rev-parse --verify HEAD)"
         git fetch -fv "$remote" pull/"$prid"/head:pr/"$prid"
     fi
