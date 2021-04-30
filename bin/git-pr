@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Copyright (c) 2020-2021  Erik Martin-Dorel
+#
+# Licensed under the MIT license <https://opensource.org/licenses/MIT>
+#
+ts="Time-stamp: <2021-04-30 22:55:35 emartin>"; ts=${ts#Time-stamp: }
+
+die_hard() {
+    echo -e "$@" >&2
+    exit 1
+}
+
+usage() {
+    cat >&2 <<EOF
+git-pr $ts
+
+Facility to fetch a read-only branch from a GitHub repo Pull Request.
+
+Usage:
+  git pr <ID> [<REMOTE>]
+
+Example:
+  git pr 390 upstream
+
+Summary:
+  BEWARE that the local branch "pr/ID" is always overwritten.
+  If the REMOTE argument is omitted, it defaults to "origin".
+  REMOTE must point to a GitHub repository.
+
+  This command creates (or *overrides*) a local branch named "pr/ID",
+  matching the source branch for PR #ID submitted in the REMOTE repo.
+
+See also:
+  - https://stackoverflow.com/a/62432946/9164010
+  - https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/checking-out-pull-requests-locally
+  - https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork
+
+Credits:
+  The git-pr helper script was written by Erik Martin-Dorel and it is
+  distributed under the MIT license <//opensource.org/licenses/MIT>.
+EOF
+}
+
+main() {
+    if [ $# -lt 1 ]; then
+        usage
+        exit 0
+    fi
+    git checkout -q "$(git rev-parse --verify HEAD)"
+    git fetch -fv "${2:-origin}" pull/"$1"/head:pr/"$1"
+    git checkout pr/"$1"
+    set -x; git branch --unset-upstream pr/"$1" 2>/dev/null || : ok
+}
+
+main "$@"

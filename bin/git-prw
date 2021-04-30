@@ -1,0 +1,207 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Copyright (c) 2020-2021  Erik Martin-Dorel
+#
+# Licensed under the MIT license <https://opensource.org/licenses/MIT>
+#
+ts="Time-stamp: <2021-04-30 23:38:02 emartin>"; ts=${ts#Time-stamp: }
+
+die_hard() {
+    echo -e "$@" >&2
+    exit 1
+}
+
+usage() {
+    cat >&2 <<EOF
+git-prw $ts
+
+Facility to fetch a read/write branch from a GitHub repo Pull Request.
+
+Usage:
+  git prw [-f] [--] <ID> [<REMOTE>]
+
+Example:
+  git prw 390 upstream
+
+Summary:
+  If the REMOTE argument is omitted, it defaults to "origin".
+  REMOTE must point to a GitHub repository.
+
+  This command creates (or *overrides*) a local branch named "pr/ID",
+  matching the source branch for PR #ID submitted in the REMOTE repo,
+  setting its upstream branch so that one can force-push to the fork.
+
+  Flag -f overwrites the local branch pr/ID even if it already exists.
+
+  It requires curl <https://curl.se/> and (optionally) jq.
+
+See also:
+  - https://stackoverflow.com/a/62432946/9164010
+  - https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/checking-out-pull-requests-locally
+  - https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork
+
+Credits:
+  The git-prw helper script was written by Erik Martin-Dorel and it is
+  distributed under the MIT license <//opensource.org/licenses/MIT>.
+EOF
+}
+
+get_remote_user_repo() {
+    # ARG $1: "origin"
+    # RETURN: "user/repo"
+    #### OK for remote URLs:
+    # git@github.com:user/repo.git
+    # git@github.com:user/repo
+    # https://github.com/user/repo.git
+    # https://github.com/user/repo
+    local remote=$1
+    local url
+    url=$(git remote get-url "$remote")
+    url=${url##*github.com?}
+    printf "%s" "${url%.git}"
+}
+
+get_pr_json() {
+    # ARG $1: pull number
+    # ARG $2: "origin"
+    # RETURN: JSON <https://docs.github.com/en/rest/reference/pulls#list-pull-requests>
+    local prid=$1
+    local remote=$2
+    local repo
+    repo=$(get_remote_user_repo "$remote")
+    if [[ $repo =~ ^[^/]+/[^/]+$ ]]; then
+        curl -fsSH "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/$repo/pulls/$prid"
+    else
+        die_hard "git-prw: Assert failed in get_pr_json(); incorrect CLI args?"
+    fi
+}
+
+get_src_ssh_url_grep() {
+    grep -e '"ssh_url"' | head -n1 | sed -e 's/^.*"ssh_url":\s*"//; s/",\s*$//'
+}
+
+get_src_ssh_url_jq() {
+    jq -r '.head.repo.ssh_url'
+}
+
+get_src_ssh_url() {
+    if command -v jq >/dev/null; then
+        get_src_ssh_url_jq  # better
+    else
+        echo >&2 "Cannot find jq; fall back to grep/head/sed..."
+        get_src_ssh_url_grep
+    fi
+}
+
+get_src_ref_grep() {
+    grep -e '"ref"' | head -n1 | sed -e 's/^.*"ref":\s*"//; s/",\s*$//'
+}
+
+get_src_ref_jq() {
+    jq -r '.head.ref'
+}
+
+get_src_ref() {
+    if command -v jq >/dev/null; then
+        get_src_ref_jq  # better
+    else
+        echo >&2 "Cannot find jq; fall back to grep/head/sed..."
+        get_src_ref_grep
+    fi
+}
+
+get_new_remote_ifneedbe() {
+    # ARG $1: ssh_url
+    # ARG $2: suggested_name, assumed to be unique
+    # RETURN: name of a matching remote (an existing one, if possible)
+    local ssh_url=$1
+    local unique_name=$2
+    local push
+    local remote
+    push=$(git remote -v | grep -e "$ssh_url .*push" | head -n1) || :
+    if [ -n "$push" ]; then
+        remote=$(cut -f 1 <<<"$push")
+        printf >&2 "Using the remote:\\n  %s\\n" "$push"
+        printf "%s" "$remote"
+    else
+        git remote remove "$unique_name"
+        git remote add "$unique_name" "$ssh_url"
+        push=$(git remote -v | grep -e "$ssh_url .*push" | head -n1)
+        printf >&2 "Created the remote:\\n  %s\\n" "$push"
+        printf "%s" "$unique_name"
+    fi
+}
+
+already_exists() {
+    # ARG $1: branch
+    branch="$1"
+    git rev-parse --verify >/dev/null "$branch"
+}
+
+is_among() {
+    local arg="$1"
+    shift
+    local elt
+    for elt; do
+        if [ "$arg" = "$elt" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+main() {
+    local prid=$1
+    local remote=${2:-origin}
+    local json
+    local ssh_url
+    local unique_suggested_name
+    local tracking_remote
+    local ref
+    local tracking_branch
+    local force=false
+
+    ## Parse options
+    OPTIND=1 # Reset is necessary if getopts was used previously in the script.  It is a good idea to make this local in a function.
+    while getopts "fh" opt; do
+    case "$opt" in
+        f)
+            force=true
+            ;;
+        h)
+            usage
+            exit 0
+            ;;
+        '?')
+            usage >&2
+            exit 1
+            ;;
+    esac
+    done
+    shift "$((OPTIND-1))" # Shift off the options and optional "--".
+    if [ $# -lt 1 ]; then
+        usage
+        exit 0
+    fi
+
+    prid=${args[0]}
+    remote=${args[1]:-origin}
+
+    if already_exists pr/"$prid" && [ "$force" = false ]; then
+        echo >&2 "Preserving branch pr/$prid. To overwrite, use the -f flag."
+    else
+        git checkout -q "$(git rev-parse --verify HEAD)"
+        git fetch -fv "$remote" pull/"$prid"/head:pr/"$prid"
+    fi
+    git checkout pr/"$prid"
+    json=$(get_pr_json "$prid" "$remote")
+    ssh_url=$(get_src_ssh_url <<<"$json")
+    ref=$(get_src_ref <<<"$json")
+    unique_suggested_name="$remote+fork-for-pr-$prid"
+    tracking_remote=$(get_new_remote_ifneedbe "$ssh_url" "$unique_suggested_name")
+    tracking_branch="$tracking_remote/$ref"
+    git fetch "$tracking_remote" "$ref"
+    git branch --set-upstream-to "$tracking_branch"
+}
+
+main "$@"
