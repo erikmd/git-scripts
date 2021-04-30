@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-05-01 00:58:47 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-05-01 01:26:30 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
@@ -52,7 +52,7 @@ EOF
 
 get_remote_user_repo() {
     # ARG $1: "origin"
-    # RETURN: "user/repo"
+    # OUTPUT: "user/repo"
     #### OK for remote URLs:
     # git@github.com:user/repo.git
     # git@github.com:user/repo
@@ -68,7 +68,7 @@ get_remote_user_repo() {
 get_pr_json() {
     # ARG $1: pull number
     # ARG $2: "origin"
-    # RETURN: JSON <https://docs.github.com/en/rest/reference/pulls#list-pull-requests>
+    # OUTPUT: JSON <https://docs.github.com/en/rest/reference/pulls#list-pull-requests>
     local prid=$1
     local remote=$2
     local repo
@@ -117,7 +117,7 @@ get_src_ref() {
 get_new_remote_ifneedbe() {
     # ARG $1: ssh_url
     # ARG $2: suggested_name, assumed to be unique
-    # RETURN: name of a matching remote (an existing one, if possible)
+    # OUTPUT: name of a matching remote (an existing one, if possible)
     local ssh_url=$1
     local unique_name=$2
     local push
@@ -138,8 +138,9 @@ get_new_remote_ifneedbe() {
 
 already_exists() {
     # ARG $1: branch
+    # RETURN: 0 if the branch exists
     branch="$1"
-    git rev-parse --verify >/dev/null "$branch"
+    git rev-parse --verify "$branch" >/dev/null 2>/dev/null
 }
 
 main() {
