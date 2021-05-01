@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-05-01 01:57:26 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-05-01 15:20:29 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
@@ -128,7 +128,7 @@ get_new_remote_ifneedbe() {
         printf >&2 "Using the remote:\\n  %s\\n" "$push"
         printf "%s" "$remote"
     else
-        git remote remove "$unique_name"
+        git remote remove "$unique_name" || :
         git remote add "$unique_name" "$ssh_url"
         push=$(git remote -v | grep -e "$ssh_url .*push" | head -n1)
         printf >&2 "Created the remote:\\n  %s\\n" "$push"
