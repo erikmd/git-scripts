@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-05-01 00:57:50 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-07-30 21:43:04 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
@@ -18,18 +18,19 @@ git-pr $ts
 Facility to fetch a read-only branch from a GitHub repo Pull Request.
 
 Usage:
-  git pr <ID> [<REMOTE>]
+  git pr <ID> [<REMOTE>] [-f]
 
 Example:
   git pr 390 upstream
 
 Summary:
-  BEWARE that the local branch "pr/ID" is always overwritten.
   If the REMOTE argument is omitted, it defaults to "origin".
   REMOTE must point to a GitHub repository.
 
-  This command creates (and overwrites) a local branch named "pr/ID",
-  matching the source branch for PR #ID submitted in the REMOTE repo.
+  This command checkouts the branch named "pr/ID" (if it doesn't exist
+  yet, it fetches the source branch for the PR #ID in the REMOTE repo)
+
+  Flag -f overwrites the local branch pr/ID even if it already exists.
 
 See also:
   - https://stackoverflow.com/a/62432946/9164010
@@ -42,16 +43,44 @@ Credits:
 EOF
 }
 
+already_exists() {
+    # ARG $1: branch
+    # RETURN: 0 if the branch exists
+    branch="$1"
+    git rev-parse --verify "$branch" >/dev/null 2>/dev/null
+}
+
 main() {
-    if [ $# -lt 1 ]; then
+    local prid
+    local remote
+    local force=false
+    # Process optional CLI option -f, which can be anywhere
+    args=("${@}")
+    for (( k=0; k < $#; k++ )); do
+        if [ "${args[$k]}" = "-f" ]; then
+            force=true
+            unset args["$k"]
+        fi
+    done
+    args=("${args[@]}")
+    if [ ${#args[@]} -lt 1 ]; then
         usage
         exit 0
     fi
-    echo >&2 "Overwriting branch pr/$1..."
-    git checkout -q "$(git rev-parse --verify HEAD)"
-    git fetch -fv "${2:-origin}" pull/"$1"/head:pr/"$1"
-    git checkout pr/"$1"
-    set -x; git branch --unset-upstream pr/"$1" 2>/dev/null || : ok
+
+    prid=${args[0]}
+    remote=${args[1]:-origin}
+
+    if already_exists pr/"$prid" && [ "$force" = false ]; then
+        echo >&2 "Preserving branch pr/$prid. To overwrite, use the -f flag."
+    else
+        echo >&2 "Overwriting branch pr/$prid..."
+        git checkout -q "$(git rev-parse --verify HEAD)"
+        git fetch -fv "$remote" pull/"$prid"/head:pr/"$prid"
+    fi
+    git checkout pr/"$prid"
+
+    set -x; git branch --unset-upstream pr/"$prid" 2>/dev/null || : ok
 }
 
 main "$@"
