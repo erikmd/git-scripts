@@ -44,18 +44,21 @@ set its execute permission, and put it in your `PATH`.
 Facility to fetch a read-only branch from a GitHub repo Pull Request.
 
 Usage:
-  git pr <ID> [<REMOTE>]
+  git pr <ID> [<REMOTE>] [-f]
 
 Example:
   git pr 390 upstream
 
 Summary:
-  BEWARE that the local branch "pr/ID" is always overwritten.
   If the REMOTE argument is omitted, it defaults to "origin".
   REMOTE must point to a GitHub repository.
 
-  This command creates (and overwrites) a local branch named "pr/ID",
-  matching the source branch for PR #ID submitted in the REMOTE repo.
+  This command checkouts the branch named "pr/ID" (if it doesn't exist
+  yet, it fetches the source branch for the PR #ID in the REMOTE repo)
+  and removes upstream info (remote-tracking branch) for this branch,
+  so it effectively becomes "read-only" with respect to "git push".
+
+  Flag -f overwrites the local branch pr/ID even if it already exists.
 
 See also:
   - https://stackoverflow.com/a/62432946/9164010
