@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-05-01 15:20:29 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-07-30 21:41:51 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
