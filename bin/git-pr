@@ -4,7 +4,7 @@ set -euo pipefail
 #
 # Licensed under the MIT license <https://opensource.org/licenses/MIT>
 #
-ts="Time-stamp: <2021-07-30 21:43:04 emartin>"; ts=${ts#Time-stamp: }
+ts="Time-stamp: <2021-07-30 21:43:10 emartin>"; ts=${ts#Time-stamp: }
 
 die_hard() {
     echo -e "$@" >&2
@@ -29,6 +29,8 @@ Summary:
 
   This command checkouts the branch named "pr/ID" (if it doesn't exist
   yet, it fetches the source branch for the PR #ID in the REMOTE repo)
+  and removes upstream info (remote-tracking branch) for this branch,
+  so it effectively becomes "read-only" with respect to "git push".
 
   Flag -f overwrites the local branch pr/ID even if it already exists.
 
