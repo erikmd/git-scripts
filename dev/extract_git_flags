@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Copyright (c) 2018, 2021  Erik Martin-Dorel
+#
+# Licensed under the MIT license <https://opensource.org/licenses/MIT>
+#
+ts="Time-stamp: <2021-09-01 22:59:04 emartin>"; ts=${ts#Time-stamp: }
+#
+# This helper script retrieves git-format-patch's "special" CLI flags
+# (i.e., the short and long CLI flags that take a mandatory argument)
+
+URLs=("https://github.com/git/git/raw/master/Documentation/git-format-patch.txt" "https://github.com/git/git/raw/master/Documentation/diff-options.txt")
+Files=()
+for url in "${URLs[@]}"; do
+    file="/tmp/$(basename "$url")"
+    [ -f "$file" ] || curl -o "$file" -L "$url"
+    Files+=("$file")
+done
+
+perl -wne '
+if (m/-.*::/ && ! m/\[\]$/) { # get all short and long flags
+  s/::$//;	# remove the :: suffix
+  s/\[=.*$//;	# remove optional arguments
+  if (m/ |=/) { # get flags with mandatory arguments
+    s/\[no-\]//;# remove negated variant with no argument
+    s/ .*$//;	# remove placeholders
+    s/=.*$//;	# remove placeholders
+    print;
+  }
+}' "${Files[@]}" | sort -V | xargs | { sed -e "s/^\|$/'/g" -e "s/ /' '/g"; }
