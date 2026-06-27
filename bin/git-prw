@@ -80,20 +80,20 @@ get_pr_json() {
     fi
 }
 
-get_src_ssh_url_grep() {
-    grep -e '"ssh_url"' | head -n1 | sed -e 's/^.*"ssh_url":[[:space:]]*"//; s/",[[:space:]]*$//'
+get_src_url_grep() {
+    grep -e '"clone_url"' | head -n1 | sed -e 's/^.*"clone_url":[[:space:]]*"//; s/",[[:space:]]*$//'
 }
 
-get_src_ssh_url_jq() {
-    jq -r '.head.repo.ssh_url'
+get_src_url_jq() {
+    jq -r '.head.repo.clone_url'
 }
 
-get_src_ssh_url() {
+get_src_url() {
     if command -v jq >/dev/null; then
-        get_src_ssh_url_jq  # better
+        get_src_url_jq  # better
     else
         echo >&2 "Cannot find jq; fall back to grep/head/sed..."
-        get_src_ssh_url_grep
+        get_src_url_grep
     fi
 }
 
@@ -115,22 +115,22 @@ get_src_ref() {
 }
 
 get_new_remote_ifneedbe() {
-    # ARG $1: ssh_url
+    # ARG $1: clone_url
     # ARG $2: suggested_name, assumed to be unique
     # OUTPUT: name of a matching remote (an existing one, if possible)
-    local ssh_url=$1
+    local clone_url=$1
     local unique_name=$2
     local push
     local remote
-    push=$(git remote -v | grep -e "$ssh_url .*push" | head -n1) || :
+    push=$(git remote -v | grep -e "$clone_url .*push" | head -n1) || :
     if [ -n "$push" ]; then
         remote=$(cut -f 1 <<<"$push")
         printf >&2 "Using the remote:\\n  %s\\n" "$push"
         printf "%s" "$remote"
     else
         git remote remove "$unique_name" || :
-        git remote add "$unique_name" "$ssh_url"
-        push=$(git remote -v | grep -e "$ssh_url .*push" | head -n1)
+        git remote add "$unique_name" "$clone_url"
+        push=$(git remote -v | grep -e "$clone_url .*push" | head -n1)
         printf >&2 "Created the remote:\\n  %s\\n" "$push"
         printf "%s" "$unique_name"
     fi
@@ -147,7 +147,7 @@ main() {
     local prid
     local remote
     local json
-    local ssh_url
+    local clone_url
     local unique_suggested_name
     local tracking_remote
     local ref
@@ -181,10 +181,10 @@ main() {
     fi
     git checkout pr/"$prid"
     json=$(get_pr_json "$prid" "$remote")
-    ssh_url=$(get_src_ssh_url <<<"$json")
+    clone_url=$(get_src_url <<<"$json")
     ref=$(get_src_ref <<<"$json")
     unique_suggested_name="$remote-fork-for-pr-$prid"
-    tracking_remote=$(get_new_remote_ifneedbe "$ssh_url" "$unique_suggested_name")
+    tracking_remote=$(get_new_remote_ifneedbe "$clone_url" "$unique_suggested_name")
     tracking_branch="$tracking_remote/$ref"
     git fetch "$tracking_remote" "$ref"
     git branch --set-upstream-to "$tracking_branch"
