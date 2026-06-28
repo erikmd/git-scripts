@@ -18,7 +18,7 @@ git-prw $ts
 Facility to fetch a read/write branch from a GitHub repo Pull Request.
 
 Usage:
-  git prw <ID> [<REMOTE>] [-f]
+  git prw [--ssh|--https] <ID> [<REMOTE>] [-f]
 
 Example:
   git prw 390 upstream
@@ -29,9 +29,10 @@ Summary:
 
   This command checkouts the branch named "pr/ID" (if it doesn't exist
   yet, it fetches the source branch for the PR #ID in the REMOTE repo)
-  and sets its upstream branch so that one can force-push to the fork
-  (using an SSH URL); it reuses (if applicable) an existing remote
+  and sets its upstream branch so that one can force-push to the fork;
+  it reuses (if applicable) an existing remote
   matching that URL, or creates a remote named REMOTE-fork-for-pr-ID.
+  The new remote is created using the same protocol as REMOTE unless --ssh or --https option is passed.
 
   Flag -f overwrites the local branch pr/ID even if it already exists.
   In general, it is a good idea to pass flag -f, unless we already ran
@@ -147,6 +148,7 @@ main() {
     local prid
     local remote
     local json
+    local protocol
     local clone_url
     local unique_suggested_name
     local tracking_remote
@@ -155,22 +157,38 @@ main() {
     local force=false
     local args
     local k
-    # Process optional CLI option -f, which can be anywhere
-    args=("${@}")
-    for (( k=0; k < $#; k++ )); do
-        if [ "${args[$k]}" = "-f" ]; then
-            force=true
-            unset args["$k"]
-        fi
+    # Based on https://mywiki.wooledge.org/ComplexOptionParsing#util-linux.27s_special_getopt
+    if getopt -T &>/dev/null && false || (( $? == 4 )) ; then
+        eval set -- "$(getopt -o f -l ssh,https -- "$@")"
+    else
+        # Process optional CLI option -f, which can be anywhere
+        args=("${@}")
+        for (( k=0; k < $#; k++ )); do
+            if [ "${args[$k]}" = "-f" ]; then
+                force=true
+                unset args["$k"]
+            fi
+        done
+        set -- "${args[@]}"
+    fi
+    while (($# > 0)); do
+        case $1 in
+            --ssh) protocol="ssh";;
+            --https) protocol="https";;
+            -f) force=true;;
+            --) shift; break;;
+            *) break;;
+        esac
+        shift
     done
-    args=("${args[@]}")
-    if [ ${#args[@]} -lt 1 ]; then
+    
+    if [ $# -lt 1 ]; then
         usage
         exit 0
     fi
 
-    prid=${args[0]}
-    remote=${args[1]:-origin}
+    prid="$1"
+    remote="${2:-origin}"
 
     if already_exists pr/"$prid" && [ "$force" = false ]; then
         echo >&2 "Preserving branch pr/$prid. To overwrite, use the -f flag."
@@ -181,10 +199,10 @@ main() {
     fi
     git checkout pr/"$prid"
     json=$(get_pr_json "$prid" "$remote")
-    clone_url=$(get_src_url <<<"$json")
+    remote_url=$(get_src_ssh_url <<<"$json")
     ref=$(get_src_ref <<<"$json")
     unique_suggested_name="$remote-fork-for-pr-$prid"
-    tracking_remote=$(get_new_remote_ifneedbe "$clone_url" "$unique_suggested_name")
+    tracking_remote=$(get_new_remote_ifneedbe "$remote_url" "$unique_suggested_name")
     tracking_branch="$tracking_remote/$ref"
     git fetch "$tracking_remote" "$ref"
     git branch --set-upstream-to "$tracking_branch"
