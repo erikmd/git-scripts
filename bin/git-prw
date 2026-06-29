@@ -317,32 +317,45 @@ main() {
     local protocol="$_arg_protocol"
     local force="$_arg_force"
     local remote_url
+    local json
     local unique_suggested_name
     local tracking_remote
     local ref
     local tracking_branch
+    local new_branch=pr/"$prid"
+    local no_op=off
 
 
     if [[ -z $protocol ]]; then
         protocol=$(detect_protocol "$remote")
     fi
-
-    if already_exists pr/"$prid" && [ "$force" = off ]; then
-        echo >&2 "Preserving branch pr/$prid. To overwrite, use the -f flag."
-    else
-        echo >&2 "Overwriting branch pr/$prid..."
-        git checkout -q "$(git rev-parse --verify HEAD)"
-        git fetch -fv "$remote" pull/"$prid"/head:pr/"$prid"
-    fi
-    git checkout pr/"$prid"
+    
     json=$(get_pr_json "$prid" "$remote")
     remote_url=$(get_src_url "$protocol" <<<"$json")
     ref=$(get_src_ref <<<"$json")
     unique_suggested_name="$remote-fork-for-pr-$prid"
     tracking_remote=$(get_new_remote_ifneedbe "$remote_url" "$unique_suggested_name")
     tracking_branch="$tracking_remote/$ref"
-    git fetch "$tracking_remote" "$ref"
-    git branch --set-upstream-to "$tracking_branch"
+    
+    if already_exists "$new_branch"; then
+        if [[ $(git rev-parse --abbrev-ref "$new_branch"@{upstream}) == "$tracking_branch" ]]; then
+            echo >&2 "Using an existing branch $new_branch..."
+            no_op=on
+        elif [[ $force == "off" ]]; then
+            die_hard "A differently set up branch $new_branch already exists. To overwrite, use the -f flag."
+        else
+            echo >&2 "Overwriting branch $new_branch..."
+        fi
+    else
+        echo >&2 "Creating branch $new_branch..."
+    fi
+    if [[ $no_op == "off" ]]; then
+        git checkout -q "$(git rev-parse --verify HEAD)"
+        git fetch -fv "$remote" pull/"$prid"/head:"$new_branch"
+        git fetch "$tracking_remote" "$ref"
+        git branch "$new_branch" --set-upstream-to "$tracking_branch"
+    fi
+    git checkout "$new_branch"
 }
 
 main "$@"
