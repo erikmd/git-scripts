@@ -27,12 +27,13 @@ Summary:
   If the REMOTE argument is omitted, it defaults to "origin".
   REMOTE must point to a GitHub repository.
 
-  This command checkouts the branch named "pr/ID" (if it doesn't exist
-  yet, it fetches the source branch for the PR #ID in the REMOTE repo)
-  and sets its upstream branch so that one can force-push to the fork;
-  it reuses (if applicable) an existing remote
+  This command checks out the branch named "pr/ID". If it doesn't exist
+  yet, it fetches the source branch for the PR #ID in the REMOTE repo
+  and sets its upstream branch so that one can push to the PR branch.
+  It reuses (if applicable) an existing remote
   matching that URL, or creates a remote named REMOTE-fork-for-pr-ID.
-  The new remote is created using the same protocol as REMOTE unless --ssh or --https option is passed.
+  The URL to use it picked for the same protocol as what REMOTE uses;
+  passing --ssh or --https forces a specific protocol.
 
   Flag -f overwrites the local branch pr/ID even if it already exists.
   In general, it is a good idea to pass flag -f, unless we already ran
@@ -82,19 +83,33 @@ get_pr_json() {
 }
 
 get_src_url_grep() {
-    grep -e '"clone_url"' | head -n1 | sed -e 's/^.*"clone_url":[[:space:]]*"//; s/",[[:space:]]*$//'
+    # ARG $1: JSON key, alphabetic
+    local key=${1:?}
+    grep -e '"'$key'"' | head -n1 | sed -e 's/^.*"'$key'":[[:space:]]*"//; s/",[[:space:]]*$//'
 }
 
 get_src_url_jq() {
-    jq -r '.head.repo.clone_url'
+    # ARG $1: JSON key, alphabetic
+    local key=${1:?}
+    jq -r '.head.repo.'$key
 }
 
 get_src_url() {
+    # ARG $1: protocol
+    # OUTPUT: Git URL
+    local key
+    
+    case ${1:?} in
+        ssh) key=ssh_url;;
+        https) key=clone_url;;
+        *) die_hard "unknown protocol: '$1'";;
+    esac
+    
     if command -v jq >/dev/null; then
-        get_src_url_jq  # better
+        get_src_url_jq $key  # better
     else
         echo >&2 "Cannot find jq; fall back to grep/head/sed..."
-        get_src_url_grep
+        get_src_url_grep $key
     fi
 }
 
@@ -116,22 +131,22 @@ get_src_ref() {
 }
 
 get_new_remote_ifneedbe() {
-    # ARG $1: clone_url
+    # ARG $1: remote_url
     # ARG $2: suggested_name, assumed to be unique
     # OUTPUT: name of a matching remote (an existing one, if possible)
-    local clone_url=$1
+    local remote_url=$1
     local unique_name=$2
     local push
     local remote
-    push=$(git remote -v | grep -e "$clone_url .*push" | head -n1) || :
+    push=$(git remote -v | grep -e "$remote_url .*push" | head -n1) || :
     if [ -n "$push" ]; then
         remote=$(cut -f 1 <<<"$push")
         printf >&2 "Using the remote:\\n  %s\\n" "$push"
         printf "%s" "$remote"
     else
         git remote remove "$unique_name" || :
-        git remote add "$unique_name" "$clone_url"
-        push=$(git remote -v | grep -e "$clone_url .*push" | head -n1)
+        git remote add "$unique_name" "$remote_url"
+        push=$(git remote -v | grep -e "$remote_url .*push" | head -n1)
         printf >&2 "Created the remote:\\n  %s\\n" "$push"
         printf "%s" "$unique_name"
     fi
@@ -144,12 +159,24 @@ already_exists() {
     git rev-parse --verify "$branch" >/dev/null 2>/dev/null
 }
 
+detect_protocol() {
+    # ARG $1: remote URL
+    # RETURN: ssh or https
+    local remote=${1:?}
+    local remote_url=$(git remote get-url "$remote")
+    [[ $remote_url == "https://"* ]] && { echo "https"; return; }
+    # https://stackoverflow.com/questions/31801271/what-are-the-supported-git-url-formats
+    # How Git extracts username:password, see url_normalize in urlmatch.c . Laxer than RFC 3986
+    [[ $remote_url == "ssh://"* || $remote_url =~ ^[^/?#@]+@.+ ]] && { echo "ssh"; return; }
+    die_hard "cannot detect protocol for '$remote_url'"
+}
+
 main() {
     local prid
     local remote
     local json
-    local protocol
-    local clone_url
+    local protocol=
+    local remote_url
     local unique_suggested_name
     local tracking_remote
     local ref
@@ -158,6 +185,7 @@ main() {
     local args
     local k
     # Based on https://mywiki.wooledge.org/ComplexOptionParsing#util-linux.27s_special_getopt
+    # Take advantage of util-linux `getopt's advanced parsing if available
     if getopt -T &>/dev/null && false || (( $? == 4 )) ; then
         eval set -- "$(getopt -o f -l ssh,https -- "$@")"
     else
@@ -187,8 +215,12 @@ main() {
         exit 0
     fi
 
-    prid="$1"
-    remote="${2:-origin}"
+    prid=$1
+    remote=${2:-origin}
+    
+    if [[ -z $protocol ]]; then
+        protocol=$(detect_protocol "$remote")
+    fi
 
     if already_exists pr/"$prid" && [ "$force" = false ]; then
         echo >&2 "Preserving branch pr/$prid. To overwrite, use the -f flag."
@@ -199,7 +231,7 @@ main() {
     fi
     git checkout pr/"$prid"
     json=$(get_pr_json "$prid" "$remote")
-    remote_url=$(get_src_ssh_url <<<"$json")
+    remote_url=$(get_src_url "$protocol" <<<"$json")
     ref=$(get_src_ref <<<"$json")
     unique_suggested_name="$remote-fork-for-pr-$prid"
     tracking_remote=$(get_new_remote_ifneedbe "$remote_url" "$unique_suggested_name")
