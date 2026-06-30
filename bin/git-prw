@@ -327,7 +327,7 @@ main() {
         protocol=$(detect_protocol "$remote")
     fi
 
-    if already_exists pr/"$prid" && [ "$force" = on ]; then
+    if already_exists pr/"$prid" && [ "$force" = off ]; then
         echo >&2 "Preserving branch pr/$prid. To overwrite, use the -f flag."
     else
         echo >&2 "Overwriting branch pr/$prid..."
