@@ -80,27 +80,30 @@ set its execute permission, and put it in your `PATH`.
 ## [git-prw](bin/git-prw)
 
 ```
-Facility to fetch a read/write branch from a GitHub repo Pull Request.
+Facility to fetch a read/write branch from a GitHub repo Pull Request (PR).
 
-Usage:
-  git prw <ID> [<REMOTE>] [-f]
+Usage: git prw [-h|--help] [-v|--version] [-p|--protocol <arg>] [-f|--(no-)force] [--] <prID> [<REMOTE>]
+	<prID>: PR number
+	<REMOTE>: GitHub remote that the PR targets (default: 'origin')
+	-h, --help: Prints help
+	-v, --version: Prints version
+	-p, --protocol: force using a specific protocol for the new remote.
+		Supported values are 'ssh' and 'https'.
+		By default, the same protocol is used as in REMOTE (no default)
+	-f, --force, --no-force: overwrite the branch if it exists (off by default)
 
 Example:
   git prw 390 upstream
 
 Summary:
-  If the REMOTE argument is omitted, it defaults to "origin".
-  REMOTE must point to a GitHub repository.
+  This command checks out the branch named "pr/$prID". If it doesn't exist
+  yet, it fetches the source branch for this PR in the REMOTE repo
+  and sets its upstream branch so that one can push to the PR branch.
+  It reuses (if applicable) an existing remote
+  matching that URL, or creates a remote named REMOTE-fork-for-pr-$prID.
 
-  This command checkouts the branch named "pr/ID" (if it doesn't exist
-  yet, it fetches the source branch for the PR #ID in the REMOTE repo)
-  and sets its upstream branch so that one can force-push to the fork
-  (using an SSH URL); it reuses (if applicable) an existing remote
-  matching that URL, or creates a remote named REMOTE-fork-for-pr-ID.
-
-  Flag -f overwrites the local branch pr/ID even if it already exists.
   In general, it is a good idea to pass flag -f, unless we already ran
-  "git pr ID REMOTE" and did commits in the local branch pr/ID.
+  "git pr prID REMOTE" and did commits in the local branch pr/ID.
 
   It requires curl <https://curl.se/> and (optionally) jq.
 
