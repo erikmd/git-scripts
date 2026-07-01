@@ -338,7 +338,7 @@ main() {
     tracking_branch="$tracking_remote/$ref"
     
     if already_exists "$new_branch"; then
-        if [[ $(git rev-parse --abbrev-ref "$new_branch"@{upstream}) == "$tracking_branch" ]]; then
+        if [[ $(git rev-parse --abbrev-ref "$new_branch@{upstream}") == "$tracking_branch" ]]; then
             echo >&2 "Using an existing branch $new_branch..."
             no_op=on
         elif [[ $force == "off" ]]; then
