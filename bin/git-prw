@@ -323,37 +323,48 @@ main() {
     local ref
     local tracking_branch
     local new_branch=pr/"$prid"
-    local no_op=off
+    local no_op=false
+    local remote_already_set=false
+    local no_changes=false
 
 
     if [[ -z $protocol ]]; then
         protocol=$(detect_protocol "$remote")
     fi
-    
+
     json=$(get_pr_json "$prid" "$remote")
     remote_url=$(get_src_url "$protocol" <<<"$json")
     ref=$(get_src_ref <<<"$json")
     unique_suggested_name="$remote-fork-for-pr-$prid"
     tracking_remote=$(get_new_remote_ifneedbe "$remote_url" "$unique_suggested_name")
     tracking_branch="$tracking_remote/$ref"
-    
+
+    git fetch "$tracking_remote" "$ref"
+
     if already_exists "$new_branch"; then
-        if [[ $(git rev-parse --abbrev-ref "$new_branch@{upstream}") == "$tracking_branch" ]]; then
-            echo >&2 "Using an existing branch $new_branch..."
-            no_op=on
-        elif [[ $force == "off" ]]; then
-            die "A differently set up branch $new_branch already exists. To overwrite, use the -f flag."
+        if [[ $force == "off" ]]; then
+            [[ $(git rev-parse --abbrev-ref "$new_branch@{upstream}") == "$tracking_branch" ]] \
+                    && remote_already_set=true
+            [[ $(git rev-parse "$new_branch") == $(git rev-parse "$tracking_branch") ]] \
+                    && no_changes=true
+            if [[ $remote_already_set == "false" ]]; then
+                die "A differently set up branch $new_branch already exists. To overwrite, use the -f flag."
+            fi
+            if [[ $no_changes == "true" ]]; then
+                echo >&2 "Using existing branch $new_branch..."
+            else
+                echo >&2 "Using existing branch $new_branch. Use -f to reset it to upstream."
+            fi
+            no_op=true
         else
             echo >&2 "Overwriting branch $new_branch..."
         fi
     else
         echo >&2 "Creating branch $new_branch..."
     fi
-    if [[ $no_op == "off" ]]; then
+    if [[ $no_op == "false" ]]; then
         git checkout -q "$(git rev-parse --verify HEAD)"
-        git fetch -fv "$remote" pull/"$prid"/head:"$new_branch"
-        git fetch "$tracking_remote" "$ref"
-        git branch "$new_branch" --set-upstream-to "$tracking_branch"
+        git branch --force "$new_branch" "$tracking_branch"
     fi
     git checkout "$new_branch"
 }
