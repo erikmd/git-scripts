@@ -79,7 +79,7 @@ print_help()
 {
     printf '%s\n' "Facility to fetch a read/write branch from a GitHub repo Pull Request (PR).
 "
-    printf 'Usage: %s [-h|--help] [-v|--version] [-p|--protocol <arg>] [-f|--(no-)force] [--] <prID> [<REMOTE>]\n' "$0"
+    printf 'Usage: %s [-h|--help] [-v|--version] [-p|--protocol <arg>] [-f|--(no-)force] [--] <prID> [<REMOTE>]\n' "git prw"
     printf '\t%s\n' "<prID>: PR number"
     printf '\t%s\n' "<REMOTE>: GitHub remote that the PR targets (default: 'origin')"
     printf '\t%s\n' "-h, --help: Prints help"
