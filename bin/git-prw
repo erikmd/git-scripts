@@ -365,7 +365,7 @@ main() {
     fi
     if [[ $no_op == "false" ]]; then
         git checkout -q "$(git rev-parse --verify HEAD)"
-        git branch --force "$new_branch" "$tracking_branch"
+        git branch --track=direct --force "$new_branch" "$tracking_branch"
     fi
     git checkout "$new_branch"
 }
