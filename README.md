@@ -82,8 +82,9 @@ set its execute permission, and put it in your `PATH`.
 ```
 Facility to fetch a read/write branch from a GitHub repo Pull Request (PR).
 
-Usage: git prw [-h|--help] [-v|--version] [-p|--protocol <arg>] [-f|--(no-)force] [--] <prID> [<REMOTE>]
-	<prID>: PR number
+Usage: git prw [-h|--help] [-v|--version] [-p|--protocol <arg>] [-f|--(no-)force] [--prune] [--] <prID> [<REMOTE>]
+	<prID>: PR number.
+		Required unless --prune is passed
 	<REMOTE>: GitHub remote that the PR targets (default: 'origin')
 	-h, --help: Prints help
 	-v, --version: Prints version
@@ -91,9 +92,12 @@ Usage: git prw [-h|--help] [-v|--version] [-p|--protocol <arg>] [-f|--(no-)force
 		Supported values are 'ssh' and 'https'.
 		By default, the same protocol is used as in REMOTE (no default)
 	-f, --force, --no-force: overwrite the branch if it exists (off by default)
+	--prune: delete all non-checked-out branches "pr/<number>"
+		and remotes "*-fork-for-pr-<number>" not used by other local branches
 
 Example:
   git prw 390 upstream
+  git prw --prune
 
 Summary:
   This command checks out the branch named "pr/$prID". If it doesn't exist
